@@ -1,6 +1,6 @@
 package com.example.parking.parkingsession.adapter.out.persistence;
 
-import com.example.parking.parkingsession.domain.model.ParkingSession;
+
 import com.example.parking.parkingsession.domain.model.ParkingSessionStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 

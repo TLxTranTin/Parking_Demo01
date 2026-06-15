@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Staff Dashboard</title>
+</head>
+<body>
+
+    <h1>Staff Dashboard</h1>
+    <p id="welcomeText"></p>
+
+    <button id="logoutBtn">Đăng xuất</button>
+
+    <script src="assets/js/auth.js"></script>
+    <script src="assets/js/api.js"></script>
+
+    <script>
+        requireRole(["STAFF"]);
+
+        const user = getCurrentUser();
+        document.getElementById("welcomeText").textContent =
+            "Xin chào " + user.username + " - Role: " + user.role;
+
+        document.getElementById("logoutBtn").addEventListener("click", logout);
+    </script>
+
+</body>
+</html>
