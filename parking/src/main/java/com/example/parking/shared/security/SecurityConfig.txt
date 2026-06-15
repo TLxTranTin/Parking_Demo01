@@ -1,0 +1,107 @@
+package com.example.parking.shared.security;
+
+import java.io.Console;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+
+@Configuration// cái annotation này là j , nó từ đâu ra , tại sao phải dùng nó , ko có nó thì sao , trường hợp mới dùng nó
+// cái này là 1 annotation của spring và nó nói với spring rằng đây ko phải là 1 class nghiệp vụ mà là 1 class config và nhờ spring quản lý
+// thế tại sao phải dùng nó?
+//  - Vì trong class này có các bean và Spring cần biết đây là 1 file cofig để đọc các bean bên trong
+//  - Nếu ko có thì Spring ko quét class này như 1 file cấu hình mà 
+public class SecurityConfig {
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http/* HttpSecurity là 1 object do Spring Security đưa vào , dùng để cấu hình bảo mật HTTP */) throws Exception {// cái này là j , nó từ đâu ra , tại sao phải dùng nó , ko có nó thì sao , trường hợp mới dùng nó
+        // Câu hỏi đặt ra SecurityFilterChain là j ?
+        //  - Là chuỗi bộ lọc bảo mật của Spring Security
+        //  CỤ thể là nó quyết định :
+        //      + Request nào được đi qua
+        //      + Request nào bị chặn
+        //      + API nào cần login 
+        //      + Có bật CSRF ko ?
+        //      + Có dùng HTTP basic ko ?
+        //      + Có dùng JWT Filter ko ?
+        //      ....
+        // Nói 1 cách dễ hiểu nó là 1 bảo vệ đứng gác để ko phải cứ reqquest nào cx đc đi vào backend và phải đi qua nó trước
+        // Nó đến từ : Spring security!
+        
+        // Nếu ko có nó thì khi sử dụng denpency Spring security thfi sẽ dùng mặc định sẽ có các hiện tượng:
+//          - Gọi API bị 401 Unauthorized
+//          - Trình duyệt hiện form login mặc định
+//          - Console in ra generated password
+//          - API register/login có thể bị chặn
+        return http
+        // http là 1 object HttpSecurity như 1 cái bảng điều khiển để cấu hình bảo mật
+                .csrf(AbstractHttpConfigurer::disable)// CSRF là cơ chế chống tấn công giả mạo request trong web dùng session/cookie.
+                .formLogin(AbstractHttpConfigurer::disable)//Dòng này tắt form login mặc định của Spring Security vì Mình không muốn Spring tự hiện trang HTML login.
+                .httpBasic(AbstractHttpConfigurer::disable)// Dòng này tắt HTTP Basic Authentication.Tại sao phải tắt?
+                                                        //     Vì mình không muốn dùng kiểu gửi username/password trong Basic Auth.
+                .authorizeHttpRequests(auth -> auth     // Đây là phần cấu hình quyền truy cập cho request. Đây là nơi mình quy định URL nào được gọi tự do, URL nào cần đăng nhập.
+                        .requestMatchers("/api/auth/**").permitAll()// Tất cả API bắt đầu bằng /api/auth/ được phép gọi mà không cần đăng nhập.
+                        .anyRequest()
+                        .permitAll()// 2 hàm này là Tất cả request còn lại cũng được phép gọi tự do.
+                )
+                .build();// Sau khi cấu hình xong http, mình gọi .build() để tạo ra object:
+    }
+
+    @Bean 
+    // Vì đã có Annotation là Configuration nên Springs sẽ tạo ra object của các bean bên trong nó là PasswwordEncoder ở dưới đây
+    public PasswordEncoder passwordEncoder() {// cái này là j , nó từ đâu ra , tại sao phải dùng nó , ko có nó thì sao , trường hợp mới dùng nó
+        return new BCryptPasswordEncoder();
+    }
+}
+
+// Tổng thể đây là file cấu hình security cho cả spring boot
+//      => thẳng ra đây là nới mà người lập trình nói với Spring Security rằng:
+//          API nào được phép gọi tự do , API nào cần đăng nhập , có dùng form login ko có bật CSRF ko , dùng loại mã hóa password nào
+
+// SỰ KHÁC NHAU CỦA SPRING KHI QUÉT FILE CẤU HÌNH VÀ FILE THƯỜNG!
+// Class thường là các class ko cs các annotation như :
+//  - COnfiguration , Service , Component thì khi Spring chạy lên thfi sẽ ko tự quản lý nó
+//      -> nghĩa là Spring không tự tạo object SecurityConfig
+//      Spring không đọc method @Bean bên trong
+//      Spring không biết class này dùng để cấu hình gì
+// Khi class mà có Component thfi nó sẽ quét rồi tạo object để làm việc thật ( khổ sai )
+//  Và class cấu hình là nơi khai báo các con Osin cho hệ thông sinh ra để làm vc suốt đời
+
+
+// Nếu class không có @Configuration, @Component, @Service,... 
+// → Spring thường không quét và không quản lý class đó.
+
+// Nếu class có @Component nhưng không có @Configuration
+// → Spring vẫn quét và tạo Bean cho class đó,
+//    nhưng các method @Bean bên trong chỉ chạy kiểu lite mode.
+
+// Nếu class có @Configuration
+// → Spring quét và xử lý nó như class cấu hình đầy đủ.
+
+// Bean là 1 Object độc nhất 1 object này lại được dùng nhiều lần và do thk Spring quản lý , thì thằng nào cần dịch vụ của object này thì dùng lại nó thôi
+
+
+// Bean khác j Component ?
+//  Component dùng trên class mình tự viết 
+// Còn Bean là dùng khi mình muốn tạo object từ thư viện bên ngoài , ở trường hopej trên thì class BCryptPasswordEncoder là class của thư viện từ bên ngoài ko phải mình viết 
+
+// Nếu ko cs HttpSecurity thfi chúng ta sẽ ko cấu hình được :
+//  + API nào mở 
+//  + APi nào khóa 
+//  + CSRF
+//  + Form login
+//  + Basic auth
+//  + JWT Filter
+
+
+// dưới đây là 1 cách viết gọi là fluent APi là cấu hình liên tục cho 1 object
+// return http
+//         .csrf(...)
+//         .formLogin(...)
+//         .httpBasic(...)
+//         .authorizeHttpRequests(...)
+//         .build();
