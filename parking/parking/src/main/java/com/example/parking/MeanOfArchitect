@@ -1,0 +1,7 @@
+domain/model        : model nghiệp vụ thuần Java
+application/service : xử lý use case
+port/in             : interface đầu vào, ví dụ login/register
+port/out            : interface đi ra ngoài, ví dụ lưu DB
+adapter/in/web      : Controller nhận HTTP request
+adapter/out         : code kết nối DB, API ngoài
+dto                 : request/response từ frontend gửi lên

@@ -1,0 +1,291 @@
+package com.example.parking.shared.security;
+
+import com.example.parking.auth.application.port.out.IJwtTokenProviderPort;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+import java.util.List;
+// file này là JWt filter. nó đứng ở cửa bảo vệ trước controller
+// Nhiệm vụ chính là :
+//  Mỗi request gửi lên backend
+//  -> filter sẽ kiểm tra có Authorization: Bearer token ko
+//  -> Nếu có token hợp lệ thì xác nhận user đã đăng nhập
+//  -> Gắn thông tin user vào SecurityContextHolder
+//  -> Request đi tiếp vào Controller
+// => đây là bảo vệ của cổng vào API
+@Component
+public class JwtAuthenticationFilter extends OncePerRequestFilter { 
+    // OncePerRequestFilter là class có sẵn trong Spring web
+    // nó giúp tạo 1 filter mà mỗi request chỉ chạy 1 lần
+    // Filter là thứ sẽ nằm trước controller :
+    // khi có request từ Client thì sẽ đi qua Filter rồi mới vào đc Controller
+    
+
+    private final IJwtTokenProviderPort jwtTokenProviderPort; // cái interface này là j , nó cung cấp những chức năng j , nó giúp j trong đây , nếu ko có nó thì sao , và tại sao phải có nó
+    // jwtTokenProviderPort đây là interface/port dùng để làm việc với JWT token , trong file này nó cung cấp mấy chức năng sau :
+    //  + validateToken(token) : kiểm tra token có đúng chữ ký ko , đúng format , hết hạn chưa
+    //  + extractUsername(token) : lấy username trong token ra
+    //  + extractRole(token) : lấy role trong tokrn ra , ví dụ STAFF / ADMIN / USER 
+    // Câu hỏi tại sao phải dùng Interface mà ko gọi thẳng class JWT?
+    // vì dự án mình đang theo là Clean Architecture / Hexagonal Architecture
+    // Thì thay vì cái filter này phụ thuộc trực tiếp vào class cụ thể như JwtTokenProviderAdapter thì chúng ta cho nó phụ thuộc vào interface
+    //  => Ý nghĩa là JwtAuthenticationFilter không cần biết JWT đucợ xử lý bằng thư viện nào ,
+    //      Nó chỉ cần biết có 1 thằng làm đc công việc validate token , lấy usernawm , lấy role từ token
+    //  Ví dụ sau này mình đổi thư viện JWT khác thì mình chỉ cần sửa class adapter phía sau , còn filter không cần sửa
+    //  Nếu ko nguy hiểm sẽ là tiêm thẳng thư viện JWT logic hay hàm validate vào thẳng filter luôn thì sửa luôn trong file này luôn => ko ổn
+
+    // Nếu ko sử dụng qua interface thì filter sẽ phải gọi trực tiếp class xử lý JWT 
+    // Vấn đề là Filter bị dính chặt với implementation cụ thể 
+    //      điều này làm cho khó test hơn , khó thay thư viện hơn , vi phạm DIP trong Clean Architecture
+
+    // DIP là :
+    // Class cấp cao ko nên phụ thuộc vào class chi tiết , nó nên phụ thuộc và abstraction/interface
+    // Nên dùng interface cho các class phía trên sẽ hợp lý hơn
+
+
+    public JwtAuthenticationFilter(IJwtTokenProviderPort jwtTokenProviderPort) {
+        this.jwtTokenProviderPort = jwtTokenProviderPort;
+        // cái constructor này là constructor injection  , Spring thấy class này có @Component nên nó sẽ tạo bean cho JwtAuthenticationFilter
+        // Thì Spring sẽ tự chạy hàm dựng tự tìm bean nào implement cho IJwtTokenProviderPort rồi truyền vào constructor
+        // Nói chung là Spring sẽ check tham số truyền vào của hàm dựng , xem nó có bean đó ko và tự lấy truyền vào để chạy hàm dựng
+    }
+
+    @Override
+    protected void doFilterInternal( // Đây là method được overide từ OncePerRequestFilter đây là chúng ta đang ghi đè lên method của class cha. Nếu viết sai tên method hoặc sai tham số , Java sẽ báo lỗi ngay
+        // Công dụng của nó là :
+        //  + Lấy header Authorization từ request
+        //  + Kiểm tra request có Bearer token ko 
+        //  + Cắt token ra
+        //  + Validate token
+        //  + Lấy username , role 
+        //  + Tạo Authentication
+        //  + Gắn vào SecurityContextHolder
+        //  + Cho request đi tiếp
+// Đoạn cuối thường có "filterChain.doFilter(request , response);"
+// Dòng này có nghĩa là Filter JWT xử lý xong rồi , cho request đi tiếp
+// Nếu thiếu dòng này thì request sẽ đứng lại , ko vào được Controller
+            HttpServletRequest request,
+            // HttpServletRequest là object đại diện cho request từ client gửi lên backend
+            // Nó chức các thông tin như:
+            //  + URL
+            //  + Http method: GET / POST / PUT / DELETE
+            //  + Header
+            //  + Query param
+            //  + IP client
+            //  + Cookie
+            //  + Session
+            // Trong file này mình dùng nó để lấy header
+            // Ví dụ : "String authorizationHeader = request.getHeader("Authorization");"
+            // ví dụ FE gửi :
+            //  " Authorization: Bearer eyeyJhbGciOiJIUzI1NiJ9eyJhbGciOiJIUzI1NiJ9eyJhbGciOiJIUzI1NiJ9"
+            // Thì cái biến authorizationHeader sẽ lấy ra toàn bộ chuỗi như sau : "Bearer eyeyJhbGciOiJIUzI1NiJ9eyJhbGciOiJIUzI1NiJ9eyJhbGciOiJIUzI1NiJ9" 
+            // Nếu ko có HttpServletRequest thì sao ?
+            // Cụ thể là ko thể lấy đc header của gói tin đê kiểm tra token
+            // Không có đc gói tin HTTP request để Filter biết client gửi lên cái j
+            // Vụ thể là ko lấy đc JWT token ở header
+
+            HttpServletResponse response,
+            // HttpServletResponse là object đại diện cho response BE chuẩn bị trả về cho Client
+            // Nó có thể dùng để 
+            //  + Chỉnh HTTP status : 200 , 400 , 401 , 403 , 500
+            //  + Chỉnh header
+            //  + Ghi body trả về cho client
+            //  + Redeirect
+        // Ví dụ nếu muốn  tự trả lỗi 401 trong filter có thể dùng :
+        // response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        // Nếu ko có response thì filter ko thể trả lời client được
+        // Ví dụ token sai -> Muốn tar 401  thì phải dùng response 
+            FilterChain filterChain 
+            // FilterChain filterChain là cái cực kỳ quan trọng , nó đại diện cho chuỗi filter còn lại phía sau ,
+            // Luồng của Spring Security ko chỉ có 1 filter mà nó có nhiều filter
+        // minh họa như sau :
+        // request -> CorsFilter->JwtAuthenticationFilter -> UsernamePasswordAuthenticationFilter -> AuthorizationFilter -> Controller
+            // FilterChain giống như câu : " ok , kiếm tra xong rồi cho request đi tiếp "
+            // thì cái dòng thông báo kiếm tra xong rồi là ;
+            // -----> filterChain.doFilter(request , response);
+    ) throws ServletException, IOException { // Thk nào sẽ bắt lỗi của thk này ServletException, IOException 
+        // throws ở đây khác throw nha :
+        // Ý nghĩa của nó là hàm này có thể xảy ra các lỗi như ServletException và IOException , nếu mà có thì cứ ném ra để thằng khác bắt và xử lý
+        // Nó cũng như try-catch là báo nếu chạy đoạn code này mà có lỗi thì dừng lại , nhưng khác ở chỗ try-catch là xử lý luôn 
+        //  còn throws nó chỉ ném lỗi thôi
+// ví dụ :
+//  try{
+//      <code ở đây nếu có lỗi thì catch sẽ bắt và xử lý ngay >
+//  }catch(ServletException e){ <code xử lý lỗi > }
+//  catch(IOException 1){ <code xử lý lỗi > }
+        // Câu hỏi đặt ra , vậy thằng này ném lỗi thì ai (handler nào bắt lỗi khi throw) sẽ xử lý ?
+        // - Vì do doFilterInternal() không phải do người tự gọi. Nó được gọi bởi Spring/ Spring Security/ Tomcat trong filter chain
+        // luồng đại khái như sau :
+        // tomcat/servlet container --> Spring sercurity filterChain --> OncePerRequestFilter --> JwtAuthenticationFilter.doFilterInternal()
+        // Nếu trong doFilterInternal() mà có lỗi ServletException hoặc IOException thò lỗi sẽ được đẩy ngucowj ra cho tầng gọi phía trên tức là thằng nào gọi thì nó sẽ xử lý lỗi
+        // ===============
+        // Lỗi có thể xảy ra ở : filterChain.doFilter(request , response);
+        // vì request đi tiếp qua filter khác hoặc controller , nên trong quá trình đó có thể lỗi 
+        // Controller xử lý bị lỗi
+        // Filter phía sau bị lỗi 
+        // Response ghi dữ liệu về Client bị lỗi
+        // Kết nối client bị ngắt 
+        // Servlet xử lý request bị lỗi
+        String authorizationHeader = request.getHeader("Authorization");
+        // Đây là hàm đọc trường header của gói tin Http và lấy cái nội dung của trường "Authorization" là "Bearer <token>"
+
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+        // Vấn đề nối chúng ta không gọi filterChain.doFilter(request , response) thì sao ?
+        //  Request sẽ bị chặn lại ở filter
+        // Ví dụ :
+        //  If(authorizationHeader == null){
+        //      return;
+        //  }
+        // => kết quả là request sẽ ko và được controller , client có thể nhận response rỗng hoặc bị xử lý lỗi tùy trường hợp
+        // Nên code đúng chính là :
+        //  If(authorizationHeader == null || !authorizationHeader.startWith("Bearer ")){
+        //      filterChain.doFilter(request , response);
+        //      return;
+        //  }
+        // => đại khái là nếu ko có token thì vẫn cho đi tiếp
+        //  Nếu Api permitAll như /api/auth/login thì vẫn chạy bình thường
+        //  Nếu API cần authenticated thì Spring Security phía sau sẽ tự chặn 401
+
+        String token = authorizationHeader.substring(7); // đây là lấy ra token từ chuỗi
+
+        if (!jwtTokenProviderPort.validateToken(token)) { // Ở đây là kiếm tra token có hợp lệ hay ko
+            filterChain.doFilter(request, response);
+            return;
+        }
+        // Nếu token sai -> Không set Authentication vào SecurityContextHolder.
+        // Sau đó vẫn cho request đi tiếp và trải qua lớp xử lý tiếp theo ( nếu API ko cần đăng nhập vẫn chạy đc và API cần đăng nhập thì sẽ cấm dùng và trả lại lỗi)
+        // Nhưng vì không có Authentication trong SecurityContextHolder nếu cái API cần sử dụng mà cần đăng nhập thì Spring security sẽ chặn
+        // Nghĩa là nếu token sai :
+        //  + thì không cân nhận đã login , SecurityContextHolder rỗng
+        //  + API cần login sẽ bị 401 Unauthorized (code ở file này ko xử lý ngay trong Filter mà để Spring Security xử lý tiếp)
+        String username = jwtTokenProviderPort.extractUsername(token);
+        // nếu check token đúng rồi thì nó sẽ lấy username ra từ trong payload của token
+        String role = jwtTokenProviderPort.extractRole(token);
+        // tiếp tục nó lấy tiếp ra phần role trong token ra
+        String authorityName = role.startsWith("ROLE_") ? role : "ROLE_" + role;
+        // cái này gắn role thành chuỗi "ROLE_<role>"
+        // Vì spring thường kiểm tra role theo dạng ROLE_ để phân quyền , nhưng trong token mình tạo là ROLE thôi , ví dụ : STAFF mà spring lại dùng ROLE_STAFF
+        UsernamePasswordAuthenticationToken authentication = // đọc thêm ở mục (1)
+// UsernamePasswordAuthenticationToken là object dùng để chứa thông tin xác thực của user, rồi mình cất nó vào SecurityContextHolder của Spring Security
+        // nguyên khúc này là đang tạo ra 1 object tên là authentication , nó nói với Spring Security rằng User này đã đucợ xác thực rồi.
+        // Tên là Username
+        // Không cần passwword nữa
+        // User có quyền ROLE_STAFF / ROLE_ADMIN / ROLE_USER
+        // ---> khi đã tạo xong thì sau đso sẽ có lệnh cất vào Spring Security là :
+        //  "SecurityContextHolder.getContext().setAuthentication("authentication");
+        // đây là thông báo với Spring security rằng : Request này thì user đã đăng nhập rồi , thông tin user nằm trong object authentication này
+                new UsernamePasswordAuthenticationToken(
+                        username,
+                        null,
+                        List.of(new SimpleGrantedAuthority(authorityName)) // SimpleGrantedAuthority là 1 class có sẵn của Spring Security , nó dùng để tạo ra các object một quyền trong Spring ( có thể có nhiều object này để tạo nên 1 danh sách quyền )
+                        // Nó biến 1 Chuỗi các quyền thành Object quyền mà Spring Security có thể hiểu được
+                        // ví dụ :
+                    // new SimpleGrantedAuthority("ROLE_STAFF")
+                    // nghĩa là tạo 1 quyền là STAFF
+                    // -Thì khi Spring Security kiểm tra phân quyền thì sẽ nhìn vào danh sách Authority của user hiện tại để quyết định cho qua hay chặn 
+                    // ví dụ : trong config :
+                    //  .requestMatchers("/api/admin/**").hasRole("ADMIN") // ở đây cú pháp .hasRole("ADMIN") ~ tương đương với ~ .hasAuthority("ROLE_STAFF")
+                    //  .requestMatchers("/api/staff/**").hasRole("STAFF") // khúc này Spring nó tìm trong đó có quyền nào là ROLE_STAFF chứ ko phải là tìm STAFF
+                    // - Lúc này Spring sẽ nhìn vào danh sách quyền của user hiện tại để quyết định cho qua hay chặn
+                        // tạo sao danh sách quyền ở đây là List : (Spring bắt buộc thế)
+                        //  - Vì tham số thứ 3 constructor này ko chỉ nhận 1 quyền đơn lẻ , mà nó có thể nhận 1 danh sách quyền , vì 1 người có thể có nhiều quyền cùng 1 lúc
+                // ======> Java ko phân quyền bằng chuỗi kí tự , nó phân quyền = object quyền xác định của Spring Sevurity là:
+                //  + SimpleGrantedAuthority
+                );
+
+
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        // SecurityContextHolder là nơi lưu thông tin user hiện tại.
+        // hiểu đơn giản nó là cái nơi lưu chứng nhận khi request có token hợp lệ 
+        // Các phần phía sau sẽ dựa vào đây để xem ai đang gọi API , User đã login chưa , vai trò là j 
+        filterChain.doFilter(request, response);
+        // dòng này là để cho request đi tiếp , nếu ko có thì request đứng luôn ở filter
+    }
+}
+
+
+
+// Servlet là 1 khái niệm trong Java Web 
+// Nói dễ hiểu Servlet là 1 thành phần java chạy trên server , dùng để nhận request từ trình duyệt / Frontenf và trả về response 
+// Thì request đó sẽ đi vào server java . Bên trong server như Tomcat, request sẽ đi qua hệ thống Servlet 
+// Trong spring boot ta thường ko cần viết Servlet trực tiếp vì spring đã bọc nó lại bằng controller
+
+// quá trình hoạt động như sau 
+// 1.Frontend gửi HTTP request
+// 2.Tomcat server
+// 3.Servlet System
+// 4.Spring security Filter
+// 5.Spring controller
+// 6.Service
+// 7.Database
+
+// Tronng file này có import các dòng sau :
+// import jakarta.servlet.FilterChain; class cúng cấp chức năng kiểm tra request/ response
+// import jakarta.servlet.ServletException;  là class lỗi có thể xảy ra trong quá trình xử lý request/response dùng để báo lỗi
+// import jakarta.servlet.http.HttpServletRequest; là class đại diện cho request gửi lên , ví dụ header , URL , method , body
+// import jakarta.servlet.http.HttpServletResponse; là class đại diện cho response trả về, ví dụ status code , body , header
+
+// ví dụ đời thường :
+//  + Servlet system = Hệ thống tiếp nhận khách ở cổng tòa nhà
+//  + HttpServletREquest = Thông tin người khách đưa vào 
+//  + Filter = Bảo vệ kiểm tra trước khi cho vào 
+//  + Controller = phòng ban xử lý yêu cầu thật sự
+
+// mục (1)
+// Constructor của UsernamePasswordAuthenticationToken là như sau:
+// new UsernamePasswordAuthenticationToken(
+//      principal, // principal : user là ai
+//      credentials, // credentials : mật khẩu/token 
+//      authorities // quyền/role của user
+// );
+    // tham số đầu tiên là principal là danh tính user : ví dụ Staff01
+    // hoặc null
+    // tham số thứ 2 là credentials thường là password hoặc thông tin chứng minh danh tính.
+    //  => nhưng trong bài mình làm là bước trước đó đã validate JWT rồi ( sai là ko ghi vào SecurityContextHolder luôn) nên bây giờ ko cần giữ password làm j nx nên là : null
+    // tham số thứ ba là quyền của user
+    // => cái cách khai báo : List.of(new SimpleGrantedAuthority(authorityName))
+    //      là đang khai báo luôn 1 danh sách quyền 
+    // ví dụ : ROLE_STAFF
+    // Spring Security sẽ dùng quyền này để kiểm tra mấy chỗ như :
+    //  @PreAuthorize("hasRole('STAFF')")
+    // Hoặc trong SecurityConfig:
+    //  .requestMatchers("/api/admin/**").hasRole("ADMIN") để kiểm tra quyền
+// => Câu hỏi quyền kiếm tra ko đúng thì sao ? -> đá về trả lại lỗi Unauthorization
+// Lưu ý :
+//  1. request gửi lên kèm JWT
+//  2.JwtAuthenticationFilter lấy token
+//  3. Đem đi validate token
+//  4. Lấy username , role từ payload của token
+//  5. Tạo UsernamePasswordAuthenticationToken
+//  6. Cất UsernamePasswordAuthenticationToken vào SecurityContexxtHolder
+//  7. Spring Security phía sau sẽ dựa vào SecurityContextHolder để biết user đã login chưa
+
+// ! Lưu ý : SecurityCOntextHolder ko phải là nơi lưu đăng nhập vĩnh viễn 
+// với JWT stateless , mỗi request mới sẽ làm lại:
+
+// Request 1 có token
+// ->filter đọc token
+//  -> tạo Authentication
+// -> set vào SecurityContextHolder
+// -> xử lý request
+// -> context được chọn
+
+// Request 2 có token
+//  -> Filter lại đọc token 
+//  -> Lại tạo Authentication mới
+//  -> Lại set vào SecurityConytextHolder
+
+//  =>> tức là mình ko lưu session đăng nhập ở server. Mỗi request tự chứng minh bằng JWT
+

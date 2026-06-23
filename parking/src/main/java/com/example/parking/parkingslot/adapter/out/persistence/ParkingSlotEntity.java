@@ -27,6 +27,9 @@ public class ParkingSlotEntity {
     @Column(nullable = false, length = 30)
     private SlotStatus status;
 
+    @Column(name = "zone_id")
+    private Long zoneId;
+
     protected ParkingSlotEntity() {
     }
 
@@ -35,17 +38,23 @@ public class ParkingSlotEntity {
             String slotCode,
             String floor,
             VehicleType vehicleType,
-            SlotStatus status
+            SlotStatus status,
+            Long zoneId
     ) {
         this.id = id;
         this.slotCode = slotCode;
         this.floor = floor;
         this.vehicleType = vehicleType;
         this.status = status;
+        this.zoneId = zoneId;
     }
 
     public Long getId() {
         return id;
+    }
+
+    public Long getZoneId() {
+        return zoneId;
     }
 
     public String getSlotCode() {

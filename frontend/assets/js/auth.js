@@ -1,75 +1,111 @@
-// assets/js/auth.js
+const AUTH_STORAGE_KEYS = {
+    accessToken: "accessToken",
+    tokenType: "tokenType",
+    userId: "userId",
+    username: "username",
+    role: "role"
+};
 
-function saveAuthData(data) {
-    localStorage.setItem("accessToken", data.accessToken);
-    localStorage.setItem("tokenType", data.tokenType || "Bearer");
-    localStorage.setItem("userId", data.id);
-    localStorage.setItem("username", data.username);
-    localStorage.setItem("role", data.role);
-}
+function saveAuthData(authData) {
+    if (!authData) {
+        throw new Error("Login response không có data.");
+    }
 
-function getAccessToken() {
-    return localStorage.getItem("accessToken");
+    if (!authData.accessToken || !authData.tokenType || !authData.role) {
+        throw new Error("Login response thiếu accessToken, tokenType hoặc role.");
+    }
+
+    localStorage.setItem(AUTH_STORAGE_KEYS.accessToken, authData.accessToken);
+    localStorage.setItem(AUTH_STORAGE_KEYS.tokenType, authData.tokenType);
+    localStorage.setItem(AUTH_STORAGE_KEYS.userId, String(authData.id));
+    localStorage.setItem(AUTH_STORAGE_KEYS.username, authData.username);
+    localStorage.setItem(AUTH_STORAGE_KEYS.role, authData.role);
 }
 
 function getCurrentUser() {
     return {
-        id: localStorage.getItem("userId"),
-        username: localStorage.getItem("username"),
-        role: localStorage.getItem("role"),
-        tokenType: localStorage.getItem("tokenType"),
-        accessToken: localStorage.getItem("accessToken")
+        accessToken: localStorage.getItem(AUTH_STORAGE_KEYS.accessToken),
+        tokenType: localStorage.getItem(AUTH_STORAGE_KEYS.tokenType),
+        userId: localStorage.getItem(AUTH_STORAGE_KEYS.userId),
+        username: localStorage.getItem(AUTH_STORAGE_KEYS.username),
+        role: localStorage.getItem(AUTH_STORAGE_KEYS.role)
     };
 }
 
 function isLoggedIn() {
-    const token = getAccessToken();
-    return token !== null && token !== "";
+    const user = getCurrentUser();
+    return Boolean(user.accessToken && user.tokenType && user.role);
+}
+
+function getAuthHeader() {
+    const user = getCurrentUser();
+
+    if (!user.accessToken || !user.tokenType) {
+        return null;
+    }
+
+    return `${user.tokenType} ${user.accessToken}`;
+}
+
+function clearAuthData() {
+    Object.values(AUTH_STORAGE_KEYS).forEach(function (key) {
+        localStorage.removeItem(key);
+    });
 }
 
 function logout() {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("tokenType");
-    localStorage.removeItem("userId");
-    localStorage.removeItem("username");
-    localStorage.removeItem("role");
-
+    clearAuthData();
     window.location.href = "login.html";
 }
 
-function getDashboardByRole(role) {
+function redirectByRole(role) {
     if (role === "ADMIN") {
-        return "admin-dashboard.html";
+        window.location.href = "admin-dashboard.html";
+        return;
     }
 
     if (role === "STAFF") {
-        return "staff-dashboard.html";
+        window.location.href = "staff-dashboard.html";
+        return;
     }
 
     if (role === "USER") {
-        return "user-dashboard.html";
+        window.location.href = "user-dashboard.html";
+        return;
     }
 
-    return "login.html";
-}
-
-function redirectByRole(role) {
-    window.location.href = getDashboardByRole(role);
+    clearAuthData();
+    window.location.href = "login.html";
 }
 
 function requireLogin() {
     if (!isLoggedIn()) {
         window.location.href = "login.html";
+        return null;
     }
+
+    return getCurrentUser();
 }
 
 function requireRole(allowedRoles) {
-    requireLogin();
+    const user = requireLogin();
 
-    const currentUser = getCurrentUser();
+    if (!user) {
+        return null;
+    }
 
-    if (!allowedRoles.includes(currentUser.role)) {
-        alert("Bạn không có quyền truy cập trang này.");
-        redirectByRole(currentUser.role);
+    if (!allowedRoles.includes(user.role)) {
+        redirectByRole(user.role);
+        return null;
+    }
+
+    return user;
+}
+
+function bindLogoutButton() {
+    const logoutButton = document.getElementById("logoutButton");
+
+    if (logoutButton) {
+        logoutButton.addEventListener("click", logout);
     }
 }

@@ -1,0 +1,313 @@
+package com.example.parking.shared.security;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.List;
+// File này chủ yếu là để làm j 
+
+// File SecurityConfig này là file cấu hình bảo mật trung tâm của Backend
+// Nó trả lời các câu hỏi kiểu
+//      - Api nào được phép gọi không cần đăng nhập
+//      - Api nào bắt buộc có JWT token
+//      - Nếu chưa đăng nhập thì trả lỗi j 
+//      - Nếu không đủ quyền thì trả lỗi j 
+//      - Có dùng session ko 
+//      - Có cho FE khác gọi API không
+//      - JWT filter được gắn chuỗi bảo vệ ở đâu 
+//      - Mac hóa password dùng thuật toán j
+// => Nói đơn giản SecurityConfig là bản thiết kế cổng bảo vệ của toàn bộ API
+
+@Configuration // class có cái này chủ yếu là để tạo ra các bean sài chung
+// @Configuration là Annotation báo cho Spring biết class này ko phải class xử lý nghiệp vụ bình thường
+//      mà nó là class chứa cấu hình , bên trong nó có thể có nhiều @Bean  
+// Nghĩa là khi Spring Boot chạy nó sẽ đọc file này và hỏi :
+//      - trong file này có những object nào cần tạo sẵn và đưa vào Spring Container ko 
+// Ví dụ có :
+//      @Bean
+//      public SecurityFilterChain securityFilterChain(...)
+// và
+//      @Bean
+//      public CorsConfigurationSource corsConfigurationSource()
+public class SecurityConfig {
+
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
+    private final RestAccessDeniedHandler restAccessDeniedHandler;
+
+    public SecurityConfig(
+            JwtAuthenticationFilter jwtAuthenticationFilter, // cung cấp các chức năng kiểm tra token
+            RestAuthenticationEntryPoint restAuthenticationEntryPoint, // cung cấp chức năng xử lý lỗi chưa đăng nhập
+            RestAccessDeniedHandler restAccessDeniedHandler // cung cấp các chức năng xử lý lỗi ko đủ quyền
+            // 3 thằng này là Dependency của SecurityConfig
+    ) {
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.restAuthenticationEntryPoint = restAuthenticationEntryPoint;
+        this.restAccessDeniedHandler = restAccessDeniedHandler;
+    }
+// bean này là bena quan trong nhất file này
+    @Bean 
+// Request từ frontend
+//         |
+//         v
+// Security Filter Chain
+//         |
+//         |-- CORS filter
+//         |-- CSRF check
+//         |-- JWT filter
+//         |-- Authorization check
+//         |
+//         v
+//    Controller
+// Nếu request ko hợp lệ , thì nó sẽ bị chặn ngay ở tầng Security chưa vào Controller
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        // đây là chuỗi bộ lọc bảo mật của hệ thống tức là dùng để cho khi có request nó phải trải qua 1 chuỗi lọc này mới có thể vào đc hệ thống
+        // - HttpSecurity là object do Spring Security cung cấp nó dùng để cấu hình bảo mật HTTP
+        // => Nói dễ hiểu HttpSecurity nó giống như cái bảng cấu hình, mình gọi các hàm trên để nó set luật bảo mật
+
+        return http // HttpSecurity là j dùng để làm j 
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                // dòng này là bật cấu hình CORS là cơ chế trình duyệt kiểm tra xem FE ở domain/port này có gọi được BA ở domain/port kia không ?
+                // Ví dụ FE chạy ở : http://127.0.0.1:5500 mà BE chạy ở : http://localhost:8080
+                // Hai cái này sẽ khác origin nên trình duyệt sẽ hỏi BE
+                // Nếu BE ko cho phép thì browser sẽ chặn
+                // Ở đây nghĩa là kêu Spring Security hãy dùng cấu hình CORS do hàm corsConFigurationSource() bên dưới cung cấp
+        // Như này .cors(...) nghĩa là tôi muốn cấu hình CORS cho Spring Security
+        // Bên trong .cors(..) Spring yêu cần chúng ta đưa vào 1 cái cấu hình
+        // Cái cấu hình đó có nhiệm vụ :
+        //      cors.configurationSource(corsConfigurationSource())
+        //      - Tức là lấy object cấu hình CORS mà Spring đưa cho rồi set cấu hình CORS của mình vào
+// Phân tích tiếp cú pháp thì ở đây chúng ta dùng cú pháp Lamda của Java Core , nó cho phép chungd ta viest gọn lại : <tham số> -> <Việc cần làm> 
+// thay vì viết void Hàm_A(<tham số>){<việc cần làm>}
+// thì cors ở đây java tự suy luận được kiểu dữ liệu , cors là j chúng ta ko cần phải khai báo tường minh như này:
+//      .cors((CorsConfigurer<HttpSecurity> cors) -> cors.configurationSource(corsConfigurationSource()))
+// java sẽ tự suy luận ra kiểu dữ liệu của biến cors để chạy
+                .csrf(AbstractHttpConfigurer::disable) // CSRF là cơ chế chống tấn công dành cho web truyền thống dùng session/cookie
+                // chúng ta tắt nó luôn ( cú pháp AbstractHttpConfigurer::disable là cú pháp reference trong java (xem ở cuối file có giải thích))
+                // chúng ta có thể viết theo kiểu lamda tiếp là :
+                // .csrf(x -> x.disable())
+                .formLogin(AbstractHttpConfigurer::disable)
+                // Spring Security mặc định có thể tạo form login kiểu web truyền thống
+                // Ví dụ nếu chưa login , nó redict sang trang login mặc định
+                // Nhưng BE của chúng ta là REST API , không dùng form login của Spring
+                // chúng ta có API POST /api.auth/login nên ko dùng login mặc định của Spring Security
+                .httpBasic(AbstractHttpConfigurer::disable) // cái này là sao
+                // HTTP basic là keieur đăng nhập mà Browser hiện popup hỏi usernawm/passqord , hoặc request gửi header dạng Basic 
+                // chúng ta ko sài tắt luôn
+
+                .sessionManagement(session -> session // session là j đâu ra hay v , cú pháp sesion->session là sao
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS) // cái này là sao
+                ) // đây là cấu hình cách Spring xử lý sesion
+                // Vậy session là gì ?
+                // Với web truyền thống:
+                //      - User login
+                //      - BE tạo session
+                //      - BE lưu session trong RAM/server
+                //      - Browser giữ JSESSIONID
+                //      - Request sau gửi JSESSIONID 
+                //      - BE tra session để biết user là ai
+
+                // Nhưng với JWT :
+                //      - User login
+                //      - BE tar JWT token
+                //      - FE fiuwx token
+                //      - Request sau gửi token
+                //      - BE đọc token để biết User là ai
+                // => Tức BE ko cần lưu session
+                // Thì :
+                // .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                // Nghĩa là BE không tạo session , không lưu trạng tháu đăng nhập trên server
+                // STATELESS nghĩa là ko trạng thái 
+                // Mỗi request phải tự chứng minh bằng JWT token
+                // Ở đây lại sài hàm lamda expression của java
+
+                .exceptionHandling(exception -> exception // cái này là hàm j xử lý cái j
+                        .authenticationEntryPoint(restAuthenticationEntryPoint)
+                        .accessDeniedHandler(restAccessDeniedHandler)
+                ) // Cái này  cấu hình cách trả lỗi bảo mật 
+                // có 2 lỗi chính :
+                //      - Chưa đăng nhập( tức là ko có token hoặc token sai )
+                //              + Thì Spring Security sẽ gọi restAuthenticationEntryPoint rồi trả lỡi 401
+                //      - Trường hợp 2 là đã đăng nhập nhưng chưa đủ quyền
+                //              + Khi APi yêu cầu .hasRole("ADMIN") mà user ko có role admin thì Spring security sẽ gọi restAccessDeniedHandler trả về lỗi 403
+
+                .authorizeHttpRequests(auth -> auth // auth ở đây là object dùng để cấu hình phân quyền request
+                        .requestMatchers("/api/auth/login").permitAll()
+                        // Dòng này có nghĩa là ai cũng gọi đucợ ko cần token 
+                        // Nếu login cần token thì vô lý
+                        .requestMatchers("/api/auth/register").permitAll()
+                        // API đăng kí cx tương tự đăng nhập ko cần token
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        // có nghĩa là API nào bắt đầu bằng : /api/admin/ thì phải csi role ADMIN
+                        .anyRequest().authenticated()
+                        // Nghĩa là những API còn lại đều bắt buộc phải đăng nhập ( tức là cần token )
+                ) // Đây là nơi cấu hình:
+                //      + URL nào được phép gọi 
+                //      + URL nào cần login 
+                //      + URL nào cần role
+
+                .addFilterBefore(
+                        jwtAuthenticationFilter,
+                        UsernamePasswordAuthenticationFilter.class // cú pháp .class ở cuối có ý nghĩa j , dùng khi nào , tại sao lại dùng nó
+                ) // Khúc này là găn JWT Filter của chúng ta vào chuỗi filter của Spring security
+                // Nghĩa là:
+                //      - Hãy chạy jwtAuthenticationFilter trước filter UsernamePasswordAuthenticationFilter của Spring.
+                // Tại sao lại vậy ?
+                //      - Vì Spring cần biết vị trí tương đối trong chuỗi Filter
+                // Hình dung như này Spring hỏi chúng ta muốn thêm "jwtAuthenticationFilter" cái filter này trc cái nàO ?
+                // chúng ta trả lời là trước filter xử lý username/password mặc định của Spring.
+
+
+
+                .build();
+                // Sau khi cấu hình xong hết , sẽ gọi .build() để tạo ra object
+                // để Spring lấy object đso đưa vào hệ thống bảo mật
+    }
+
+    @Bean
+    // bean này tạo ra object mã hóa passqord
+    public PasswordEncoder passwordEncoder() {
+        // passwordEncoder là interface của Spring security và BCryptPasswordEncoder là 1 class implement interface đó
+        // nó dùng để khó Refister :
+        //      + String encoded = passwordEncoder.encode(rawPassword);
+        return new BCryptPasswordEncoder();
+        // BCryptPasswwordEncoder() là đối tượng của thư viện Security đk
+    }
+    // ở đây cái object đc lấy đi làm bean là cái giá trị return của hàm này tức là mình đg sài đối BCryptPass.. để mã hóa
+    @Bean
+    // bean này cung cấp cấu hình CORS cho Springh security
+    // nó trả lời cho các câu hỏi:
+    //  + FE nào được gọi BE
+    //  + Method nào được phép
+    //  + Header nào được phép gửi
+    //  + Có cho gửi credential ko
+    //  + Cấu hình này áp dụng cho URL nào
+    public CorsConfigurationSource corsConfigurationSource() {
+// CorsCongigurationSource là interface của Spring nó đại diện cho nguồn cung cấp cấu hình CORS
+// Spring security cần 1 object kiểu này để biết request nào đc CORS cho phép
+        CorsConfiguration configuration = new CorsConfiguration();
+        // CorsConfiguration là object chứa các luật CORS
+        // Nó giống như cái Form cấu hình:
+        //      + Allowed origins
+        //      + Allowed methpds
+        //      + Allowed headers
+        //      + Allowed credentials
+        // => Từ đso chúng ta mới có thể set từng luật vào
+
+        configuration.setAllowedOrigins(List.of(
+                "http://127.0.0.1:5500",
+                "http://localhost:5500"
+        ));
+        // Dòng này cho phép FE từ cái origin này gọi API
+        // http://127.0.0.1:5500
+        // http://127.0.0.1:5500
+        // Ví dụ khi dùng vs code live server thì FE thường chạy ở port 5500
+        // Nếu không có dòng này , browser sẽ có thể báo lỗi CORS kho FE gọi BE
+        // Lưu ý : http://localhost:5500 và http://localhost:5500 được xem là 2 origin khác nhau
+        // nên chúng ta cho phép cả 2 là đúng
+
+        configuration.setAllowedMethods(List.of(
+                "GET",
+                "POST",
+                "PUT",
+                "PATCH",
+                "DELETE",
+                "OPTIONS"
+        ));// Dòng này cho phép FE gọi các HTTP method này 
+
+
+        configuration.setAllowedHeaders(List.of(
+                "Authorization",
+                "Content-Type"
+        ));
+        // Dòng này cho phép FE gửi các Header này :
+        //      dùng Authorization để gửi JWT token
+        //      Nếu ko cho phép Header Authorization , FE có gửi token cũng cso thể bị Browser chặn bởi CORS
+        //      Context-Type dùng khi gửi JSON 
+
+        configuration.setAllowCredentials(true);
+        // cái này có nghãi alf cho phép gửi credentials trong CORS request
+        // Credentials có thể là :
+        //      + cookie
+        //      + authorization certificate
+        //      + TLS client cẻtificate
+        // Trong project của chúng ta cái quan trọng là request có thể mang thông tin các thực như Authorization
+        // Tuy nhiên vì chúng ta đang dùng JWT trong header Authorization , dòng này không phải lúc nào cũng bắt buộc như khi dùng cookie session. Nhưng để cấu hình CORS chặt chẽ với origin cụ thể thì để true vẫn ổn
+
+        UrlBasedCorsConfigurationSource source =
+                new UrlBasedCorsConfigurationSource();
+                // Kiểu dữ liệu này là sao , có tác dụng j , dùng khi nào
+        // Đây là class của Spring dùng để đăng ký CORS theo URL pattern
+        // NNois dễ hiểu với URL nào thì dùng cấu hình CORS nào 
+
+        source.registerCorsConfiguration("/**", configuration);// hàm này là đang làm j
+        // cái này có nghĩa là báo cho Spring biết rằng tất cả các URL trong Backend hãy dùng bộ luật CORS nằm trong biếm configuration này
+        // Ví dụ :
+        //@Bean
+        // public CorsConfigurationSource corsConfigurationSource() {
+        //     CorsConfiguration configuration = new CorsConfiguration();
+
+        //     configuration.setAllowedOrigins(List.of("http://localhost:3000"));
+        //     configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE"));
+        //     configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        //     configuration.setAllowCredentials(true);
+
+        //     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+
+        //     source.registerCorsConfiguration("/**", configuration);
+
+        //     return source;
+        // }
+        // Ở đây source giống như 1 cái kho/Bảng lưu cấu hình CORS theo từng URL 
+        // Ví dụ BE có nhiều ỦRL
+        //      - /api/auth/login
+        //      - /api/auth/register
+        //      - /api/parking-sessions/active
+        //      - /api/parking-sessions/check-in
+        //      - /api/admin/test
+        // Thì ở đây mỗi nhóm URL có thể cấu hình CORS khác nhau
+        // Ví dụ :
+        // source.registerCorsconfiguration("/api/auth/**",configAuth);
+        // source.registerCorsconfiguration("/api/admin/**",configAdmin);
+        // source/registerCorsConfiguration("/api/user/**",configUser);
+        //      (Ở đây hàm registerConfiguration là hàm đăng ký cấu hình CORS configuration cho nhóm URL)
+        // Nghĩa là /api/auth** dùng configAuth
+        // /api/admin/** dùng configAdmin
+        // /api/user/** dùng configUser 
+        return source;
+    }
+}
+
+// cú pháp reference :
+// TeenClassHoặcObject::TênMethod
+
+// .class trong java dùng để lấy object đại diện cho kiểu class
+// Ví dụ:
+//      + String.class
+//      + Integer.class
+// Nó không tạo object mới
+// Nó chỉ báo cho ta biết đây là class <nào đó>
+
+
+
+// UsernawmPasswordAuthenticationFilter là 1 filter có sẵn của Spring Security nó thường dùng cho kiểu đăng nhập truyền thống bằng form
+// Username + password
+// Ví dụ web truyền thống có form login:
+// POST /login
+// username=...
+// password=...
+// Thì UsernamePasswordAuthenticationFilter sẽ đứng ra xử lý username/password đó
+// Nhưng project chúng ta đã tắt cái này rồi và xử lý bằng JWT và lấy nó ra làm mốc cho chuỗi filter của chúng ta
+
+// CORS là viết tắt của Cross-origin Resource Sharing
+// Hiểu đơn giản là cơ chế cho phép hoặc chặn FE ở Domain/port này gọi BE ở Domain/port khác

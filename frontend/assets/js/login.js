@@ -1,70 +1,75 @@
-// assets/js/login.js
-
-const LOGIN_API_URL = "http://localhost:8080/api/auth/login";
-
-const loginForm = document.getElementById("loginForm");
-const usernameInput = document.getElementById("username");
-const passwordInput = document.getElementById("password");
-const formMessage = document.getElementById("formMessage");
-const loginButton = document.getElementById("loginButton");
-
-loginForm.addEventListener("submit", async function (event) {
-    event.preventDefault();
-
-    const username = usernameInput.value.trim();
-    const password = passwordInput.value.trim();
-
-    formMessage.textContent = "";
-
-    if (username === "") {
-        formMessage.textContent = "Vui lòng nhập username.";
+document.addEventListener("DOMContentLoaded", function () {
+    if (isLoggedIn()) {
+        redirectByRole(getCurrentUser().role);
         return;
     }
 
-    if (password === "") {
-        formMessage.textContent = "Vui lòng nhập password.";
-        return;
-    }
-
-    try {
-        loginButton.disabled = true;
-        loginButton.textContent = "Đang đăng nhập...";
-
-        const response = await fetch(LOGIN_API_URL, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                username: username,
-                password: password
-            })
+    const loginForm = document.getElementById("loginForm");
+    const usernameInput = document.getElementById("username");
+    const passwordInput = document.getElementById("password");
+    const loginButton = document.getElementById("loginButton");
+    const loginButtonText = document.getElementById("loginButtonText");
+    const loginSpinner = document.getElementById("loginSpinner");
+    const loginMessage = document.getElementById("loginMessage");
+    const passwordToggle = document.getElementById("passwordToggle");
+    const goRegisterButton = document.getElementById("goRegisterButton");
+    
+    if (goRegisterButton) {
+        goRegisterButton.addEventListener("click", function () {
+            window.location.href = "register.html";
         });
+    }
 
-        const result = await response.json();
+    passwordToggle.addEventListener("click", function () {
+        const isPassword = passwordInput.type === "password";
+        passwordInput.type = isPassword ? "text" : "password";
+        passwordToggle.textContent = isPassword ? "Ẩn" : "Hiện";
+    });
 
-        if (!response.ok || result.success === false) {
-            throw new Error(result.message || "Đăng nhập thất bại.");
+    loginForm.addEventListener("submit", async function (event) {
+        event.preventDefault();
+
+        const username = usernameInput.value.trim();
+        const password = passwordInput.value.trim();
+
+        if (!username || !password) {
+            showLoginMessage("Vui lòng nhập username và password.", "error");
+            return;
         }
 
-        const authData = result.data;
+        setLoginLoading(true);
+        showLoginMessage("", "");
 
-        saveAuthData(authData);
+        try {
+            const response = await apiFetch(API_ENDPOINTS.login, {
+                method: "POST",
+                body: JSON.stringify({
+                    username,
+                    password
+                })
+            });
 
-        if (authData.role === "ADMIN") {
-            window.location.href = "admin-dashboard.html";
-        } else if (authData.role === "STAFF") {
-            window.location.href = "staff-dashboard.html";
-        } else if (authData.role === "USER") {
-            window.location.href = "user-dashboard.html";
-        } else {
-            formMessage.textContent = "Role không hợp lệ.";
+            saveAuthData(response.data);
+            redirectByRole(response.data.role);
+        } catch (error) {
+            showLoginMessage(error.message, "error");
+        } finally {
+            setLoginLoading(false);
         }
+    });
 
-    } catch (error) {
-        formMessage.textContent = error.message;
-    } finally {
-        loginButton.disabled = false;
-        loginButton.textContent = "Đăng nhập";
+    function setLoginLoading(isLoading) {
+        loginButton.disabled = isLoading;
+        loginButtonText.textContent = isLoading ? "Đang đăng nhập..." : "Đăng nhập";
+        loginSpinner.classList.toggle("hidden", !isLoading);
+    }
+
+    function showLoginMessage(message, type) {
+        loginMessage.textContent = message;
+        loginMessage.className = "message";
+
+        if (type) {
+            loginMessage.classList.add(type);
+        }
     }
 });

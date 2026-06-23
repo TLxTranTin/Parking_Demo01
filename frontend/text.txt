@@ -1,0 +1,38 @@
+Ý nghĩa từng file
+config.js
+→ Chứa API_BASE_URL và các endpoint.
+→ Sau này backend đổi URL thì sửa ở đây, không sửa lung tung nhiều file.
+
+auth.js
+→ Quản lý đăng nhập:
+  - lưu token
+  - lấy user hiện tại
+  - logout
+  - kiểm tra đã login chưa
+  - kiểm tra role
+
+api.js
+→ Hàm gọi API dùng chung.
+→ Tự gắn Authorization: Bearer token.
+→ Tự xử lý lỗi 401.
+
+login.js
+→ Chỉ xử lý trang login.
+→ Gọi API login, lưu token, chuyển trang theo role.
+
+staff-dashboard.js
+→ Chỉ xử lý logic riêng của Staff Dashboard.
+→ Bước này mới làm khung:
+  - requireRole(["STAFF"])
+  - hiển thị username/role
+  - logout
+→ Chưa làm check-in/check-out.
+
+base.css
+→ CSS dùng chung toàn frontend.
+
+login.css
+→ CSS riêng cho login.html.
+
+staff-dashboard.css
+→ CSS riêng cho staff-dashboard.html.

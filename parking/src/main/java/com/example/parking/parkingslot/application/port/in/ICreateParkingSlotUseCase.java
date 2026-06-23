@@ -5,5 +5,10 @@ import com.example.parking.vehicle.domain.model.VehicleType;
 
 public interface ICreateParkingSlotUseCase {
 
-    ParkingSlot createParkingSlot(String slotCode, String floor, VehicleType vehicleType);
+    ParkingSlot createParkingSlot(
+        String slotCode,
+        String floor,
+        VehicleType vehicleType,
+        Long zoneId
+    );
 }

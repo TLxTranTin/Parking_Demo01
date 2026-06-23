@@ -2,29 +2,101 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Login - Parking System</title>
+    <title>Login - Parking Building System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="assets/css/base.css">
+    <link rel="stylesheet" href="assets/css/login.css">
 </head>
-<body>
+<body class="login-page">
+    <section class="login-shell">
+        <div class="login-hero">
+            <div class="brand-badge">
+                <span>🅿️</span>
+                <strong>Parking Building System</strong>
+            </div>
 
-    <h1>Đăng nhập</h1>
+            <h1>Quản lý bãi xe tòa nhà nhanh, rõ ràng, an toàn.</h1>
+            <p>
+                Đăng nhập để quản lý xe vào bãi, xe ra bãi, danh sách xe đang gửi,
+                vị trí trống và các phiên gửi xe đang hoạt động.
+            </p>
 
-    <form id="loginForm">
-        <div>
-            <label>Username</label>
-            <input type="text" id="username">
+            <div class="hero-cards">
+                <div class="hero-card">
+                    <strong>JWT</strong>
+                    <span>Bảo vệ API sau đăng nhập</span>
+                </div>
+                <div class="hero-card">
+                    <strong>Live</strong>
+                    <span>Gọi API thật từ backend</span>
+                </div>
+                <div class="hero-card">
+                    <strong>MVP</strong>
+                    <span>HTML CSS JS thuần</span>
+                </div>
+            </div>
         </div>
 
-        <div>
-            <label>Password</label>
-            <input type="password" id="password">
+        <div class="login-panel">
+            <div class="login-card">
+                <h2>Đăng nhập</h2>
+                <p class="login-subtitle">
+                    Nhập tài khoản để truy cập hệ thống quản lý bãi xe.
+                </p>
+
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <input
+                            type="text"
+                            id="username"
+                            placeholder="Ví dụ: staff01"
+                            autocomplete="username"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <div class="password-wrapper">
+                            <input
+                                type="password"
+                                id="password"
+                                placeholder="Nhập password"
+                                autocomplete="current-password"
+                            >
+                            <button type="button" id="passwordToggle" class="password-toggle">
+                                Hiện
+                            </button>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="loginButton" class="primary-button login-button">
+                        <span id="loginButtonText">Đăng nhập</span>
+                        <span id="loginSpinner" class="spinner hidden"></span>
+                    </button>
+
+                    <div id="loginMessage" class="message login-message"></div>
+                </form>
+
+                <div class="login-divider">
+                    <span>hoặc</span>
+                </div>
+
+                <button type="button" id="goRegisterButton" class="register-button">
+                    Đăng ký tài khoản
+                </button>
+                <div class="login-note">
+                    Sau khi đăng nhập thành công, hệ thống sẽ tự chuyển trang theo role:
+                    ADMIN, STAFF hoặc USER.
+                </div>
+            </div>
         </div>
+    </section>
 
-        <p id="formMessage"></p>
-
-        <button type="submit" id="loginButton">Đăng nhập</button>
-    </form>
-
+    <script src="assets/js/config.js"></script>
     <script src="assets/js/auth.js"></script>
+    <script src="assets/js/api.js"></script>
     <script src="assets/js/login.js"></script>
 </body>
 </html>

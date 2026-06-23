@@ -1,5 +1,7 @@
 package com.example.parking.parkingslot.adapter.in.web;
 
+import com.example.parking.buildingstructure.application.port.in.IListZonesUseCase;
+import com.example.parking.buildingstructure.domain.model.BuildingZone;
 import com.example.parking.parkingslot.adapter.in.web.dto.CreateParkingSlotRequest;
 import com.example.parking.parkingslot.adapter.in.web.dto.ParkingSlotResponse;
 import com.example.parking.parkingslot.adapter.in.web.dto.UpdateParkingSlotStatusRequest;
@@ -25,17 +27,21 @@ public class ParkingSlotController {
     private final IGetParkingSlotUseCase getParkingSlotUseCase;
     private final IUpdateParkingSlotStatusUseCase updateParkingSlotStatusUseCase;
     private final IDeleteParkingSlotUseCase deleteParkingSlotUseCase;
+    private final IListZonesUseCase listZonesUseCase;
 
     public ParkingSlotController(
             ICreateParkingSlotUseCase createParkingSlotUseCase,
             IGetParkingSlotUseCase getParkingSlotUseCase,
             IUpdateParkingSlotStatusUseCase updateParkingSlotStatusUseCase,
-            IDeleteParkingSlotUseCase deleteParkingSlotUseCase
+            IDeleteParkingSlotUseCase deleteParkingSlotUseCase,
+            IListZonesUseCase listZonesUseCase
+
     ) {
         this.createParkingSlotUseCase = createParkingSlotUseCase;
         this.getParkingSlotUseCase = getParkingSlotUseCase;
         this.updateParkingSlotStatusUseCase = updateParkingSlotStatusUseCase;
         this.deleteParkingSlotUseCase = deleteParkingSlotUseCase;
+        this.listZonesUseCase = listZonesUseCase;
     }
 
     @PostMapping
@@ -45,7 +51,8 @@ public class ParkingSlotController {
         ParkingSlot parkingSlot = createParkingSlotUseCase.createParkingSlot(
                 request.getSlotCode(),
                 request.getFloor(),
-                request.getVehicleType()
+                request.getVehicleType(),
+                request.getZoneId()
         );
 
         return ResponseEntity
@@ -101,13 +108,31 @@ public class ParkingSlotController {
         );
     }
 
-    private ParkingSlotResponse toResponse(ParkingSlot parkingSlot) {
+        private ParkingSlotResponse toResponse(ParkingSlot parkingSlot) {
+        if (parkingSlot.getZoneId() == null) {
+                return new ParkingSlotResponse(
+                        parkingSlot.getId(),
+                        parkingSlot.getSlotCode(),
+                        parkingSlot.getFloor(),
+                        parkingSlot.getVehicleType(),
+                        parkingSlot.getStatus()
+                );
+        }
+
+        BuildingZone zone = listZonesUseCase.getZoneById(parkingSlot.getZoneId());
+
         return new ParkingSlotResponse(
                 parkingSlot.getId(),
                 parkingSlot.getSlotCode(),
                 parkingSlot.getFloor(),
                 parkingSlot.getVehicleType(),
-                parkingSlot.getStatus()
+                parkingSlot.getStatus(),
+                zone.getId(),
+                zone.getZoneCode(),
+                zone.getZoneName(),
+                zone.getFloorId(),
+                zone.getFloorCode(),
+                zone.getFloorName()
         );
-    }
+        }
 }
