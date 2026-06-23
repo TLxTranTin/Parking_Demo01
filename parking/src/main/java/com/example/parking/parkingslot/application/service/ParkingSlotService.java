@@ -1,5 +1,7 @@
 package com.example.parking.parkingslot.application.service;
 
+import com.example.parking.buildingstructure.application.port.in.IListZonesUseCase;
+import com.example.parking.buildingstructure.domain.model.BuildingZone;
 import com.example.parking.parkingslot.application.port.in.ICreateParkingSlotUseCase;
 import com.example.parking.parkingslot.application.port.in.IDeleteParkingSlotUseCase;
 import com.example.parking.parkingslot.application.port.in.IGetParkingSlotUseCase;
@@ -21,29 +23,57 @@ public class ParkingSlotService implements
         IGetParkingSlotUseCase,
         IUpdateParkingSlotStatusUseCase,
         IDeleteParkingSlotUseCase {
-
+    private final IListZonesUseCase listZonesUseCase;
     private final IParkingSlotRepositoryPort parkingSlotRepositoryPort;
 
-    public ParkingSlotService(IParkingSlotRepositoryPort parkingSlotRepositoryPort) {
+    public ParkingSlotService(IParkingSlotRepositoryPort parkingSlotRepositoryPort , IListZonesUseCase listZonesUseCase) {
         this.parkingSlotRepositoryPort = parkingSlotRepositoryPort;
+        this.listZonesUseCase = listZonesUseCase;
     }
 
     @Override
-    public ParkingSlot createParkingSlot(String slotCode, String floor, VehicleType vehicleType) {
+    public ParkingSlot createParkingSlot(
+            String slotCode,
+            String floor,
+            VehicleType vehicleType,
+            Long zoneId
+    ) {
         String normalizedSlotCode = normalizeSlotCode(slotCode);
         String normalizedFloor = normalizeFloor(floor);
-        VehicleType validVehicleType = validateVehicleType(vehicleType);
+
+        if (vehicleType == null) {
+            throw new BusinessException("Vehicle type is required");
+        }
 
         if (parkingSlotRepositoryPort.existsBySlotCode(normalizedSlotCode)) {
-            throw new BusinessException("Parking slot code already exists");
+            throw new BusinessException("Slot code already exists");
+        }
+
+        String floorToUse = normalizedFloor;
+
+        if (zoneId != null) {
+            BuildingZone zone = listZonesUseCase.getZoneById(zoneId);
+
+            if (!zone.isActive()) {
+                throw new BusinessException("Building zone is inactive");
+            }
+
+            if (zone.getVehicleType() != null && zone.getVehicleType() != vehicleType) {
+                throw new BusinessException("Slot vehicle type does not match zone vehicle type");
+            }
+
+            if (zone.getFloorCode() != null && !zone.getFloorCode().isBlank()) {
+                floorToUse = zone.getFloorCode();
+            }
         }
 
         ParkingSlot parkingSlot = new ParkingSlot(
                 null,
                 normalizedSlotCode,
-                normalizedFloor,
-                validVehicleType,
-                SlotStatus.AVAILABLE
+                floorToUse,
+                vehicleType,
+                SlotStatus.AVAILABLE,
+                zoneId
         );
 
         return parkingSlotRepositoryPort.save(parkingSlot);

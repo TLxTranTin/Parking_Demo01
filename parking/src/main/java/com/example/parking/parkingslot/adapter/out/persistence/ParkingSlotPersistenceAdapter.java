@@ -74,7 +74,8 @@ public class ParkingSlotPersistenceAdapter implements IParkingSlotRepositoryPort
                 entity.getSlotCode(),
                 entity.getFloor(),
                 entity.getVehicleType(),
-                entity.getStatus()
+                entity.getStatus(),
+                entity.getZoneId()
         );
     }
 
@@ -84,7 +85,8 @@ public class ParkingSlotPersistenceAdapter implements IParkingSlotRepositoryPort
                 parkingSlot.getSlotCode(),
                 parkingSlot.getFloor(),
                 parkingSlot.getVehicleType(),
-                parkingSlot.getStatus()
+                parkingSlot.getStatus(),
+                parkingSlot.getZoneId()
         );
     }
 }

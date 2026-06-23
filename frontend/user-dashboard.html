@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>User Dashboard - Parking System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="assets/css/base.css">
+    <link rel="stylesheet" href="assets/css/user-dashboard.css">
+</head>
+<body>
+    <div class="user-dashboard-layout">
+        <header class="dashboard-header">
+            <div>
+                <h1>User Dashboard</h1>
+                <p class="dashboard-subtitle">Register your vehicle and view your vehicles</p>
+            </div>
+
+            <div class="user-info-card">
+                <div>
+                    Xin chào, <strong id="usernameText">-</strong>
+                </div>
+                <div>
+                    Role: <strong id="roleText">-</strong>
+                </div>
+                <button id="logoutButton" class="logout-button" type="button">
+                    Đăng Xuất
+                </button>
+            </div>
+        </header>
+
+        <main class="dashboard-main">
+            <div id="pageMessage" class="page-message hidden"></div>
+
+            <section class="dashboard-section">
+                <div class="section-header">
+                    <div>
+                        <h2>Register Vehicle</h2>
+                        <p>Submit your vehicle information for approval.</p>
+                    </div>
+                </div>
+
+                <form id="registerVehicleForm" class="vehicle-form">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="plateNumberInput">Plate number <span>*</span></label>
+                            <input
+                                type="text"
+                                id="plateNumberInput"
+                                placeholder="Example: 59A1-77777"
+                                autocomplete="off"
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label for="vehicleTypeSelect">Vehicle type <span>*</span></label>
+                            <select id="vehicleTypeSelect">
+                                <option value="">-- Select type --</option>
+                                <option value="MOTORBIKE">MOTORBIKE</option>
+                                <option value="CAR">CAR</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="brandInput">Brand</label>
+                            <input
+                                type="text"
+                                id="brandInput"
+                                placeholder="Example: Honda"
+                                autocomplete="off"
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label for="colorInput">Color</label>
+                            <input
+                                type="text"
+                                id="colorInput"
+                                placeholder="Example: Black"
+                                autocomplete="off"
+                            >
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="descriptionInput">Description</label>
+                        <textarea
+                            id="descriptionInput"
+                            rows="3"
+                            placeholder="Example: Xe của tôi"
+                        ></textarea>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="primary-button">
+                            Register Vehicle
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="dashboard-section">
+                <div class="section-header">
+                    <div>
+                        <h2>My Vehicles</h2>
+                        <p>Only vehicles that belong to your account are shown here.</p>
+                    </div>
+
+                    <button id="refreshVehiclesButton" class="secondary-button" type="button">
+                        Refresh
+                    </button>
+                </div>
+
+                <div class="table-wrapper">
+                    <table class="vehicles-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Plate number</th>
+                                <th>Type</th>
+                                <th>Brand</th>
+                                <th>Color</th>
+                                <th>Status</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody id="vehiclesTableBody">
+                            <tr>
+                                <td colspan="7" class="empty-cell">Loading vehicles...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+            <section class="dashboard-section">
+                <div class="section-header">
+                    <div>
+                        <h2>My Invoices</h2>
+                        <p>View your parking invoices and unpaid balance.</p>
+                    </div>
+
+                    <button id="refreshMyInvoicesButton" class="secondary-button" type="button">
+                        Refresh invoices
+                    </button>
+                </div>
+
+                <div class="invoice-summary-grid">
+                    <div class="invoice-summary-card">
+                        <span class="summary-label">Total unpaid amount</span>
+                        <strong id="unpaidInvoiceTotal">0 VND</strong>
+                    </div>
+
+                    <div class="invoice-summary-card">
+                        <span class="summary-label">Number of unpaid invoices</span>
+                        <strong id="unpaidInvoiceCount">0</strong>
+                    </div>
+                </div>
+
+                <div class="payment-action-bar">
+                    <div>
+                        <span class="selected-total-label">Selected total:</span>
+                        <strong id="selectedPaymentTotal">0 VND</strong>
+                    </div>
+
+                    <button id="paySelectedInvoicesButton" class="primary-button" type="button">
+                        Pay selected invoices
+                    </button>
+                </div>
+
+                <div id="paymentMessage" class="page-message hidden"></div>
+
+                <p class="payment-note">
+                    This is a mock payment feature for unpaid registered-user invoices.
+                </p>
+
+                <div id="myInvoiceMessage" class="page-message hidden"></div>
+
+                <div class="table-wrapper">
+                    <table class="my-invoice-table">
+                        <thead>
+                            <tr>
+                                <th>Select</th>
+                                <th>ID</th>
+                                <th>Session ID</th>
+                                <th>Plate number</th>
+                                <th>Vehicle type</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Type</th>
+                                <th>Issued at</th>
+                                <th>Paid at</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="myInvoiceTableBody">
+                            <tr>
+                                <td colspan="10" class="empty-cell">Loading invoices...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+            <section class="dashboard-section">
+                <div class="section-header">
+                    <div>
+                        <h2>Feedback & Incident Reports</h2>
+                        <p>Submit feedback or report incidents related to your parking experience.</p>
+                    </div>
+
+                    <button id="refreshIncidentsButton" class="secondary-button" type="button">
+                        Refresh reports
+                    </button>
+                </div>
+
+                <form id="incidentForm" class="incident-form">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="incidentTitle">Title <span>*</span></label>
+                            <input
+                                type="text"
+                                id="incidentTitle"
+                                placeholder="Example: Xe bị trầy"
+                                autocomplete="off"
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label for="incidentType">Type <span>*</span></label>
+                            <select id="incidentType">
+                                <option value="">-- Select type --</option>
+                                <option value="FEEDBACK">FEEDBACK</option>
+                                <option value="INCIDENT">INCIDENT</option>
+                                <option value="COMPLAINT">COMPLAINT</option>
+                                <option value="OTHER">OTHER</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="incidentPriority">Priority <span>*</span></label>
+                            <select id="incidentPriority">
+                                <option value="">-- Select priority --</option>
+                                <option value="LOW">LOW</option>
+                                <option value="MEDIUM">MEDIUM</option>
+                                <option value="HIGH">HIGH</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="incidentPlateNumber">Plate number</label>
+                            <input
+                                type="text"
+                                id="incidentPlateNumber"
+                                placeholder="Example: 59A1-77777"
+                                autocomplete="off"
+                            >
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="incidentDescription">Description <span>*</span></label>
+                        <textarea
+                            id="incidentDescription"
+                            rows="4"
+                            placeholder="Describe your feedback or incident..."
+                        ></textarea>
+                    </div>
+
+                    <div id="incidentMessage" class="page-message hidden"></div>
+
+                    <div class="form-actions">
+                        <button id="submitIncidentButton" class="primary-button" type="submit">
+                            Submit Report
+                        </button>
+                    </div>
+                </form>
+
+                <div class="table-wrapper incident-table-wrapper">
+                    <table class="incident-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Title</th>
+                                <th>Type</th>
+                                <th>Priority</th>
+                                <th>Status</th>
+                                <th>Plate number</th>
+                                <th>Staff note</th>
+                                <th>Created at</th>
+                                <th>Resolved at</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="myIncidentTableBody">
+                            <tr>
+                                <td colspan="9" class="empty-cell">Loading incident reports...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/auth.js"></script>
+    <script src="assets/js/api.js"></script>
+    <script src="assets/js/user-dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Staff Dashboard - Parking System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="assets/css/base.css">
+    <link rel="stylesheet" href="assets/css/staff-dashboard.css">
+</head>
+<body>
+    <div class="staff-dashboard-layout">
+        <header class="dashboard-header">
+            <div>
+                <h1>Staff Dashboard</h1>
+                <p class="dashboard-subtitle">Check-in, check-out and monitor active parking sessions</p>
+            </div>
+
+            <div class="staff-info-card">
+                <div>
+                    Xin chào, <strong id="usernameText">-</strong>
+                </div>
+                <div>
+                    Role: <strong id="roleText">-</strong>
+                </div>
+                <button id="logoutButton" class="logout-button" type="button">
+                    Logout
+                </button>
+            </div>
+        </header>
+
+        <main class="dashboard-main">
+            <section class="dashboard-section">
+                <div class="section-header">
+                    <div>
+                        <h2>Check-in Vehicle</h2>
+                        <p>Choose registered mode or visitor mode before check-in.</p>
+                    </div>
+                </div>
+
+                <form id="checkInForm" class="parking-form">
+                    <div class="mode-selector">
+                        <label class="mode-option">
+                            <input
+                                type="radio"
+                                name="checkInMode"
+                                id="checkInModeRegistered"
+                                value="REGISTERED"
+                                checked
+                            >
+                            <span>
+                                <strong>Registered vehicle</strong>
+                                <small>Approved vehicle only needs plate number.</small>
+                            </span>
+                        </label>
+
+                        <label class="mode-option">
+                            <input
+                                type="radio"
+                                name="checkInMode"
+                                id="checkInModeVisitor"
+                                value="VISITOR"
+                            >
+                            <span>
+                                <strong>Visitor vehicle</strong>
+                                <small>Visitor vehicle requires vehicle type.</small>
+                            </span>
+                        </label>
+                    </div>
+
+                    <div id="checkInModeHint" class="mode-hint">
+                        Registered vehicle only needs plate number.
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="checkInPlateNumberInput">
+                                Plate number <span>*</span>
+                            </label>
+                            <input
+                                type="text"
+                                id="checkInPlateNumberInput"
+                                placeholder="Example: 59A1-77777"
+                                autocomplete="off"
+                            >
+                        </div>
+
+                        <div class="form-group" id="checkInVehicleTypeGroup">
+                            <label for="checkInVehicleTypeSelect">
+                                Vehicle type <span>*</span>
+                            </label>
+                            <select id="checkInVehicleTypeSelect">
+                                <option value="">-- Select vehicle type --</option>
+                                <option value="MOTORBIKE">MOTORBIKE</option>
+                                <option value="CAR">CAR</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="checkInMessage" class="form-message hidden"></div>
+
+                    <div class="form-actions">
+                        <button id="checkInButton" class="primary-button" type="submit">
+                            Check-in
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="dashboard-section">
+                <div class="section-header">
+                    <div>
+                        <h2>Check-out Vehicle</h2>
+                        <p>Enter plate number to complete active parking session.</p>
+                    </div>
+                </div>
+
+                <form id="checkOutForm" class="parking-form">
+                    <div class="form-grid one-column">
+                        <div class="form-group">
+                            <label for="checkOutPlateNumberInput">
+                                Plate number <span>*</span>
+                            </label>
+                            <input
+                                type="text"
+                                id="checkOutPlateNumberInput"
+                                placeholder="Example: 59A1-77777"
+                                autocomplete="off"
+                            >
+                        </div>
+                    </div>
+
+                    <div id="checkOutMessage" class="form-message hidden"></div>
+                    <div id="checkOutResult" class="checkout-result hidden"></div>
+
+                    <div class="form-actions">
+                        <button id="checkOutButton" class="danger-button" type="submit">
+                            Check-out
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="dashboard-section">
+                <div class="section-header">
+                    <div>
+                        <h2>Active Sessions</h2>
+                        <p>Current vehicles inside the parking building.</p>
+                    </div>
+
+                    <button id="refreshActiveSessionsButton" class="secondary-button" type="button">
+                        Refresh
+                    </button>
+                </div>
+
+                <div class="table-wrapper">
+                    <table class="sessions-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Vehicle ID</th>
+                                <th>Plate number</th>
+                                <th>Vehicle type</th>
+                                <th>Slot ID</th>
+                                <th>Slot code</th>
+                                <th>Check-in time</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="activeSessionsTableBody">
+                            <tr>
+                                <td colspan="8" class="empty-cell">Loading active sessions...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+            <section class="dashboard-section">
+                <div class="section-header">
+                    <div>
+                        <h2>Session History</h2>
+                        <p>View and filter parking session history.</p>
+                    </div>
+                </div>
+
+                <form id="sessionHistoryFilterForm" class="history-filter-form">
+                    <div class="history-filter-grid">
+                        <div class="form-group">
+                            <label for="historyPlateNumberInput">Plate number</label>
+                            <input
+                                type="text"
+                                id="historyPlateNumberInput"
+                                placeholder="Example: 59A1-12345"
+                                autocomplete="off"
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label for="historyStatusSelect">Status</label>
+                            <select id="historyStatusSelect">
+                                <option value="">All</option>
+                                <option value="ACTIVE">ACTIVE</option>
+                                <option value="COMPLETED">COMPLETED</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="historyFromDateInput">From date</label>
+                            <input
+                                type="date"
+                                id="historyFromDateInput"
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label for="historyToDateInput">To date</label>
+                            <input
+                                type="date"
+                                id="historyToDateInput"
+                            >
+                        </div>
+                    </div>
+
+                    <div id="sessionHistoryMessage" class="form-message hidden"></div>
+
+                    <div class="history-filter-actions">
+                        <button id="searchHistoryButton" class="primary-button" type="submit">
+                            Search
+                        </button>
+
+                        <button id="resetHistoryButton" class="secondary-button" type="button">
+                            Reset
+                        </button>
+                    </div>
+                </form>
+
+                <div class="table-wrapper">
+                    <table class="sessions-table history-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Plate number</th>
+                                <th>Vehicle type</th>
+                                <th>Slot code</th>
+                                <th>Check-in time</th>
+                                <th>Check-out time</th>
+                                <th>Duration hours</th>
+                                <th>Total amount</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="sessionHistoryTableBody">
+                            <tr>
+                                <td colspan="9" class="empty-cell">Loading session history...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+            <section class="dashboard-section">
+                <div class="section-header">
+                    <div>
+                        <h2>Invoices</h2>
+                        <p>View and filter invoices created after vehicle check-out.</p>
+                    </div>
+                </div>
+
+                <form id="invoiceFilterForm" class="invoice-filter-form">
+                    <div class="invoice-filter-grid">
+                        <div class="form-group">
+                            <label for="invoicePlateNumberInput">Plate number</label>
+                            <input
+                                type="text"
+                                id="invoicePlateNumberInput"
+                                placeholder="Example: 59A1-12345"
+                                autocomplete="off"
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label for="invoiceStatusSelect">Status</label>
+                            <select id="invoiceStatusSelect">
+                                <option value="">All</option>
+                                <option value="UNPAID">UNPAID</option>
+                                <option value="PAID">PAID</option>
+                                <option value="CANCELLED">CANCELLED</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="invoiceTypeSelect">Type</label>
+                            <select id="invoiceTypeSelect">
+                                <option value="">All</option>
+                                <option value="GUEST">GUEST</option>
+                                <option value="REGISTERED_USER">REGISTERED_USER</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="invoiceFromDateInput">From date</label>
+                            <input
+                                type="date"
+                                id="invoiceFromDateInput"
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label for="invoiceToDateInput">To date</label>
+                            <input
+                                type="date"
+                                id="invoiceToDateInput"
+                            >
+                        </div>
+                    </div>
+
+                    <div id="invoiceMessage" class="form-message hidden"></div>
+
+                    <div class="invoice-filter-actions">
+                        <button id="searchInvoiceButton" class="primary-button" type="submit">
+                            Search
+                        </button>
+
+                        <button id="resetInvoiceButton" class="secondary-button" type="button">
+                            Reset
+                        </button>
+                    </div>
+                </form>
+
+                <div class="table-wrapper">
+                    <table class="sessions-table invoice-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Session ID</th>
+                                <th>User ID</th>
+                                <th>Plate number</th>
+                                <th>Vehicle type</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Type</th>
+                                <th>Issued at</th>
+                                <th>Paid at</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="invoiceTableBody">
+                            <tr>
+                                <td colspan="10" class="empty-cell">Loading invoices...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+            <section class="dashboard-section">
+                <div class="section-header">
+                    <div>
+                        <h2>Incident Reports</h2>
+                        <p>View and update user feedback or incident reports.</p>
+                    </div>
+                </div>
+
+                <form id="incidentManagementFilterForm" class="incident-management-filter-form">
+                    <div class="incident-management-filter-grid">
+                        <div class="form-group">
+                            <label for="incidentStatusFilter">Status</label>
+                            <select id="incidentStatusFilter">
+                                <option value="">All</option>
+                                <option value="OPEN">OPEN</option>
+                                <option value="IN_PROGRESS">IN_PROGRESS</option>
+                                <option value="RESOLVED">RESOLVED</option>
+                                <option value="REJECTED">REJECTED</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="incidentTypeFilter">Type</label>
+                            <select id="incidentTypeFilter">
+                                <option value="">All</option>
+                                <option value="FEEDBACK">FEEDBACK</option>
+                                <option value="INCIDENT">INCIDENT</option>
+                                <option value="COMPLAINT">COMPLAINT</option>
+                                <option value="OTHER">OTHER</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="incidentPriorityFilter">Priority</label>
+                            <select id="incidentPriorityFilter">
+                                <option value="">All</option>
+                                <option value="LOW">LOW</option>
+                                <option value="MEDIUM">MEDIUM</option>
+                                <option value="HIGH">HIGH</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="incidentUserIdFilter">User ID</label>
+                            <input
+                                type="number"
+                                id="incidentUserIdFilter"
+                                placeholder="Example: 5"
+                                min="1"
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label for="incidentPlateNumberFilter">Plate number</label>
+                            <input
+                                type="text"
+                                id="incidentPlateNumberFilter"
+                                placeholder="Example: 59A1-77777"
+                                autocomplete="off"
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label for="incidentFromDateFilter">From date</label>
+                            <input
+                                type="date"
+                                id="incidentFromDateFilter"
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label for="incidentToDateFilter">To date</label>
+                            <input
+                                type="date"
+                                id="incidentToDateFilter"
+                            >
+                        </div>
+                    </div>
+
+                    <div id="incidentManagementMessage" class="form-message hidden"></div>
+
+                    <div class="incident-management-filter-actions">
+                        <button id="searchIncidentsButton" class="primary-button" type="submit">
+                            Search
+                        </button>
+
+                        <button id="resetIncidentsButton" class="secondary-button" type="button">
+                            Reset
+                        </button>
+                    </div>
+                </form>
+
+                <div class="table-wrapper">
+                    <table class="incident-management-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>User ID</th>
+                                <th>Title</th>
+                                <th>Type</th>
+                                <th>Priority</th>
+                                <th>Status</th>
+                                <th>Plate number</th>
+                                <th>Description</th>
+                                <th>Staff note</th>
+                                <th>Created at</th>
+                                <th>Resolved at</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="incidentManagementTableBody">
+                            <tr>
+                                <td colspan="12" class="empty-cell">Loading incident reports...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/auth.js"></script>
+    <script src="assets/js/api.js"></script>
+    <script src="assets/js/staff-dashboard.js"></script>
+</body>
+</html>

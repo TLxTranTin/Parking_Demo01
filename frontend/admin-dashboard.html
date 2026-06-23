@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard - Parking System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="assets/css/base.css">
+    <link rel="stylesheet" href="assets/css/admin-dashboard.css">
+</head>
+<body>
+    <div class="admin-dashboard-layout">
+        <header class="dashboard-header">
+            <div>
+                <h1>Admin Dashboard</h1>
+                <p class="dashboard-subtitle">Manage registered vehicles and parking slots</p>
+            </div>
+
+            <div class="admin-info-card">
+                <div>
+                    Xin chào, <strong id="usernameText">-</strong>
+                </div>
+                <div>
+                    Role: <strong id="roleText">-</strong>
+                </div>
+                <button id="logoutButton" class="logout-button" type="button">
+                    Logout
+                </button>
+            </div>
+        </header>
+
+        <main class="dashboard-main">
+            <div id="pageMessage" class="page-message hidden"></div>
+
+            <section class="dashboard-section">
+                <div class="section-header">
+                    <div>
+                        <h2>Vehicle Management</h2>
+                        <p>Approve, reject, block, or unblock registered vehicles.</p>
+                    </div>
+
+                    <div class="section-actions">
+                        <select id="statusFilter" class="status-filter">
+                            <option value="ALL">ALL</option>
+                            <option value="PENDING">PENDING</option>
+                            <option value="APPROVED">APPROVED</option>
+                            <option value="REJECTED">REJECTED</option>
+                            <option value="BLOCKED">BLOCKED</option>
+                        </select>
+
+                        <button id="refreshVehiclesButton" class="secondary-button" type="button">
+                            Refresh Vehicles
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table class="vehicles-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Plate number</th>
+                                <th>Type</th>
+                                <th>Owner name</th>
+                                <th>Owner user ID</th>
+                                <th>Brand</th>
+                                <th>Color</th>
+                                <th>Status</th>
+                                <th>Description</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="vehiclesTableBody">
+                            <tr>
+                                <td colspan="10" class="empty-cell">Loading vehicles...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="dashboard-section">
+                <div class="section-header">
+                    <div>
+                        <h2>Parking Slot Management</h2>
+                        <p>Add slots, update slot status, and delete unused slots.</p>
+                    </div>
+                </div>
+
+                <form id="createSlotForm" class="slot-form">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="slotCodeInput">Slot code <span>*</span></label>
+                            <input
+                                type="text"
+                                id="slotCodeInput"
+                                placeholder="Example: M-001"
+                                autocomplete="off"
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label for="slotFloorInput">Floor <span>*</span></label>
+                            <input
+                                type="text"
+                                id="slotFloorInput"
+                                placeholder="Example: F1"
+                                autocomplete="off"
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label for="slotVehicleTypeSelect">Vehicle type <span>*</span></label>
+                            <select id="slotVehicleTypeSelect">
+                                <option value="">-- Select vehicle type --</option>
+                                <option value="MOTORBIKE">MOTORBIKE</option>
+                                <option value="CAR">CAR</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="slotMessage" class="page-message hidden"></div>
+
+                    <div class="form-actions">
+                        <button id="createSlotButton" class="primary-button" type="submit">
+                            Add Slot
+                        </button>
+                    </div>
+                </form>
+
+                <div class="slot-table-header">
+                    <div>
+                        <h3>Parking Slots</h3>
+                        <p>Manage all parking slots in the building.</p>
+                    </div>
+
+                    <div class="section-actions">
+                        <select id="slotStatusFilter" class="status-filter">
+                            <option value="ALL">ALL</option>
+                            <option value="AVAILABLE">AVAILABLE</option>
+                            <option value="OCCUPIED">OCCUPIED</option>
+                            <option value="MAINTENANCE">MAINTENANCE</option>
+                        </select>
+
+                        <button id="refreshSlotsButton" class="secondary-button" type="button">
+                            Refresh Slots
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table class="slots-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Slot code</th>
+                                <th>Floor</th>
+                                <th>Vehicle type</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="slotsTableBody">
+                            <tr>
+                                <td colspan="6" class="empty-cell">Loading parking slots...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="dashboard-section">
+                <div class="section-header">
+                    <div>
+                        <h2>Account Management</h2>
+                        <p>Create internal accounts and lock or unlock existing accounts.</p>
+                    </div>
+
+                    <button id="refreshAccountsButton" class="secondary-button" type="button">
+                        Refresh Accounts
+                    </button>
+                </div>
+
+                <form id="createAccountForm" class="account-form">
+                    <div class="form-grid account-form-grid">
+                        <div class="form-group">
+                            <label for="accountUsernameInput">Username <span>*</span></label>
+                            <input
+                                type="text"
+                                id="accountUsernameInput"
+                                placeholder="Example: staff02"
+                                autocomplete="off"
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label for="accountPasswordInput">Password <span>*</span></label>
+                            <input
+                                type="password"
+                                id="accountPasswordInput"
+                                placeholder="Example: 123456"
+                                autocomplete="new-password"
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label for="accountRoleSelect">Role <span>*</span></label>
+                            <select id="accountRoleSelect">
+                                <option value="">-- Select role --</option>
+                                <option value="STAFF">STAFF</option>
+                                <option value="ADMIN">ADMIN</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="accountMessage" class="page-message hidden"></div>
+
+                    <div class="form-actions">
+                        <button id="createAccountButton" class="primary-button" type="submit">
+                            Create Account
+                        </button>
+                    </div>
+                </form>
+
+                <div class="account-table-header">
+                    <div>
+                        <h3>Accounts</h3>
+                        <p>Manage ADMIN and STAFF accounts.</p>
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table class="accounts-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Username</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="accountsTableBody">
+                            <tr>
+                                <td colspan="5" class="empty-cell">Loading accounts...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="dashboard-section">
+                <div class="section-header">
+                    <div>
+                        <h2>Incident Reports</h2>
+                        <p>View and update user feedback or incident reports.</p>
+                    </div>
+                </div>
+
+                <form id="adminIncidentFilterForm" class="incident-management-filter-form">
+                    <div class="incident-management-filter-grid">
+                        <div class="form-group">
+                            <label for="adminIncidentStatusFilter">Status</label>
+                            <select id="adminIncidentStatusFilter">
+                                <option value="">All</option>
+                                <option value="OPEN">OPEN</option>
+                                <option value="IN_PROGRESS">IN_PROGRESS</option>
+                                <option value="RESOLVED">RESOLVED</option>
+                                <option value="REJECTED">REJECTED</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="adminIncidentTypeFilter">Type</label>
+                            <select id="adminIncidentTypeFilter">
+                                <option value="">All</option>
+                                <option value="FEEDBACK">FEEDBACK</option>
+                                <option value="INCIDENT">INCIDENT</option>
+                                <option value="COMPLAINT">COMPLAINT</option>
+                                <option value="OTHER">OTHER</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="adminIncidentPriorityFilter">Priority</label>
+                            <select id="adminIncidentPriorityFilter">
+                                <option value="">All</option>
+                                <option value="LOW">LOW</option>
+                                <option value="MEDIUM">MEDIUM</option>
+                                <option value="HIGH">HIGH</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="adminIncidentUserIdFilter">User ID</label>
+                            <input type="number" id="adminIncidentUserIdFilter" min="1" placeholder="Example: 5">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="adminIncidentPlateNumberFilter">Plate number</label>
+                            <input type="text" id="adminIncidentPlateNumberFilter" placeholder="Example: 59A1-77777">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="adminIncidentFromDateFilter">From date</label>
+                            <input type="date" id="adminIncidentFromDateFilter">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="adminIncidentToDateFilter">To date</label>
+                            <input type="date" id="adminIncidentToDateFilter">
+                        </div>
+                    </div>
+
+                    <div id="adminIncidentMessage" class="page-message hidden"></div>
+
+                    <div class="incident-management-filter-actions">
+                        <button class="primary-button" type="submit">Search</button>
+                        <button id="resetAdminIncidentsButton" class="secondary-button" type="button">Reset</button>
+                    </div>
+                </form>
+
+                <div class="table-wrapper">
+                    <table class="incident-management-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>User ID</th>
+                                <th>Title</th>
+                                <th>Type</th>
+                                <th>Priority</th>
+                                <th>Status</th>
+                                <th>Plate number</th>
+                                <th>Description</th>
+                                <th>Staff note</th>
+                                <th>Created at</th>
+                                <th>Resolved at</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="adminIncidentTableBody">
+                            <tr>
+                                <td colspan="12" class="empty-cell">Loading incident reports...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="dashboard-section">
+                <div class="section-header">
+                    <div>
+                        <h2>Building Structure</h2>
+                        <p>Manage parking building floors and zones.</p>
+                    </div>
+                </div>
+
+                <!-- FLOOR MANAGEMENT -->
+                <div class="building-card">
+                    <div class="subsection-header">
+                        <div>
+                            <h3>Floor Management</h3>
+                            <p>Create floors and control active status.</p>
+                        </div>
+                    </div>
+
+                    <form id="createFloorForm" class="building-form">
+                        <div class="building-form-grid">
+                            <div class="form-group">
+                                <label for="floorCodeInput">Floor code <span>*</span></label>
+                                <input
+                                    type="text"
+                                    id="floorCodeInput"
+                                    placeholder="Example: B1"
+                                    autocomplete="off"
+                                >
+                            </div>
+
+                            <div class="form-group">
+                                <label for="floorNameInput">Floor name <span>*</span></label>
+                                <input
+                                    type="text"
+                                    id="floorNameInput"
+                                    placeholder="Example: Basement 1"
+                                    autocomplete="off"
+                                >
+                            </div>
+
+                            <div class="form-group building-description-group">
+                                <label for="floorDescriptionInput">Description</label>
+                                <input
+                                    type="text"
+                                    id="floorDescriptionInput"
+                                    placeholder="Example: Tầng hầm 1"
+                                    autocomplete="off"
+                                >
+                            </div>
+                        </div>
+
+                        <div id="floorMessage" class="page-message hidden"></div>
+
+                        <div class="building-form-actions">
+                            <button id="createFloorButton" class="primary-button" type="submit">
+                                Create Floor
+                            </button>
+                        </div>
+                    </form>
+
+                    <div class="building-toolbar">
+                        <div class="form-group">
+                            <label for="floorActiveFilter">Active status</label>
+                            <select id="floorActiveFilter">
+                                <option value="">All</option>
+                                <option value="true">Active</option>
+                                <option value="false">Inactive</option>
+                            </select>
+                        </div>
+
+                        <button id="refreshFloorsButton" class="secondary-button" type="button">
+                            Refresh floors
+                        </button>
+                    </div>
+
+                    <div class="table-wrapper">
+                        <table class="building-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Floor code</th>
+                                    <th>Floor name</th>
+                                    <th>Description</th>
+                                    <th>Status</th>
+                                    <th>Created at</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+
+                            <tbody id="floorsTableBody">
+                                <tr>
+                                    <td colspan="7" class="empty-cell">Loading floors...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ZONE MANAGEMENT -->
+                <div class="building-card">
+                    <div class="subsection-header">
+                        <div>
+                            <h3>Zone Management</h3>
+                            <p>Create zones inside floors and control active status.</p>
+                        </div>
+                    </div>
+
+                    <form id="createZoneForm" class="building-form">
+                        <div class="building-form-grid">
+                            <div class="form-group">
+                                <label for="zoneFloorSelect">Floor <span>*</span></label>
+                                <select id="zoneFloorSelect">
+                                    <option value="">-- Select floor --</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="zoneCodeInput">Zone code <span>*</span></label>
+                                <input
+                                    type="text"
+                                    id="zoneCodeInput"
+                                    placeholder="Example: A"
+                                    autocomplete="off"
+                                >
+                            </div>
+
+                            <div class="form-group">
+                                <label for="zoneNameInput">Zone name <span>*</span></label>
+                                <input
+                                    type="text"
+                                    id="zoneNameInput"
+                                    placeholder="Example: Zone A"
+                                    autocomplete="off"
+                                >
+                            </div>
+
+                            <div class="form-group">
+                                <label for="zoneVehicleTypeSelect">Vehicle type</label>
+                                <select id="zoneVehicleTypeSelect">
+                                    <option value="">Common</option>
+                                    <option value="MOTORBIKE">MOTORBIKE</option>
+                                    <option value="CAR">CAR</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group building-description-group">
+                                <label for="zoneDescriptionInput">Description</label>
+                                <input
+                                    type="text"
+                                    id="zoneDescriptionInput"
+                                    placeholder="Example: Khu xe máy tầng B1"
+                                    autocomplete="off"
+                                >
+                            </div>
+                        </div>
+
+                        <div id="zoneMessage" class="page-message hidden"></div>
+
+                        <div class="building-form-actions">
+                            <button id="createZoneButton" class="primary-button" type="submit">
+                                Create Zone
+                            </button>
+                        </div>
+                    </form>
+
+                    <form id="zoneFilterForm" class="building-filter-form">
+                        <div class="building-filter-grid">
+                            <div class="form-group">
+                                <label for="zoneFloorFilter">Floor</label>
+                                <select id="zoneFloorFilter">
+                                    <option value="">All floors</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="zoneActiveFilter">Active status</label>
+                                <select id="zoneActiveFilter">
+                                    <option value="">All</option>
+                                    <option value="true">Active</option>
+                                    <option value="false">Inactive</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="zoneVehicleTypeFilter">Vehicle type</label>
+                                <select id="zoneVehicleTypeFilter">
+                                    <option value="">All</option>
+                                    <option value="MOTORBIKE">MOTORBIKE</option>
+                                    <option value="CAR">CAR</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="building-filter-actions">
+                            <button class="primary-button" type="submit">
+                                Search
+                            </button>
+
+                            <button id="resetZoneFilterButton" class="secondary-button" type="button">
+                                Reset
+                            </button>
+                        </div>
+                    </form>
+
+                    <div class="table-wrapper">
+                        <table class="building-table zones-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Floor</th>
+                                    <th>Zone code</th>
+                                    <th>Zone name</th>
+                                    <th>Vehicle type</th>
+                                    <th>Description</th>
+                                    <th>Status</th>
+                                    <th>Created at</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+
+                            <tbody id="zonesTableBody">
+                                <tr>
+                                    <td colspan="9" class="empty-cell">Loading zones...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/auth.js"></script>
+    <script src="assets/js/api.js"></script>
+    <script src="assets/js/admin-dashboard.js"></script>
+</body>
+</html>

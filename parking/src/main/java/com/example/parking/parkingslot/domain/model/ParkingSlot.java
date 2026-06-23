@@ -9,8 +9,25 @@ public class ParkingSlot {
     private final String floor;
     private final VehicleType vehicleType;
     private final SlotStatus status;
+    private final Long zoneId;
 
     public ParkingSlot(
+            Long id,
+            String slotCode,
+            String floor,
+            VehicleType vehicleType,
+            SlotStatus status,
+            Long zoneId
+    ) {
+        this.id = id;
+        this.slotCode = slotCode;
+        this.floor = floor;
+        this.vehicleType = vehicleType;
+        this.status = status;
+        this.zoneId = zoneId;
+    }
+
+        public ParkingSlot(
             Long id,
             String slotCode,
             String floor,
@@ -22,6 +39,7 @@ public class ParkingSlot {
         this.floor = floor;
         this.vehicleType = vehicleType;
         this.status = status;
+        this.zoneId = null;
     }
 
     public Long getId() {
@@ -42,5 +60,9 @@ public class ParkingSlot {
 
     public SlotStatus getStatus() {
         return status;
+    }
+
+    public Long getZoneId(){
+        return zoneId;
     }
 }
